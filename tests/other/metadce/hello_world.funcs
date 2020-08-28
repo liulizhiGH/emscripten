@@ -21,8 +21,6 @@ $__unlockfile
 $__vfprintf_internal
 $__wasi_syscall_ret
 $__wasm_call_ctors
-$dlfree
-$dlmalloc
 $dynCall_ii
 $dynCall_iidiiii
 $dynCall_iiii
@@ -48,7 +46,6 @@ $pop_arg_long_double
 $printf
 $printf_core
 $pthread_self
-$sbrk
 $stackAlloc
 $stackRestore
 $stackSave
