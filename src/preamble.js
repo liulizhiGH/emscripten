@@ -221,7 +221,7 @@ function allocate(slab, types, allocator, ptr) {
   if (allocator == ALLOC_NONE) {
     ret = ptr;
   } else {
-    ret = [_malloc,
+    ret = [{{{ ('_malloc' in IMPLEMENTED_FUNCTIONS) ? '_malloc' : 'null' }}},
 #if DECLARE_ASM_MODULE_EXPORTS
     stackAlloc,
 #else
