@@ -108,7 +108,7 @@ mergeInto(LibraryManager.library, {
                 return original.apply(null, arguments);
               } finally {
                 if (ABORT) return;
-                var y = Asyncify.exportCallStack.pop(x);
+                var y = Asyncify.exportCallStack.pop();
                 assert(y === x);
 #if ASYNCIFY_DEBUG >= 2
                 err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length + 1) + ' finally', x);

@@ -1459,7 +1459,32 @@ function makeDynCall(sig, funcPtr) {
   if (USE_LEGACY_DYNCALLS) {
     return `getDynCaller("${sig}", ${funcPtr})`;
   } else {
-    return `wasmTable.get(${funcPtr})`;
+    var ret = `wasmTable.get(${funcPtr})`;
+    if (ASYNCIFY) {
+      // Asyncify needs to know how to call back into the wasm the way it was
+      // called, so that we can resume execution (resuming begins with calling
+      // back inside just as we were called before). Exports are handled by
+      // Asyncify.exportCallStack, which lets us track the export by which we
+      // entered the wasm, but calling the table requires some help. Track which
+      // function pointer and which parameters were used on that stack with
+      // special 'dynCall' entries, identifiable by their "__dynCall" prefix.
+      ret = `
+(function() {
+  var args = Array.prototype.slice.call(arguments);
+  // Encode that this is a dynCall, the function pointer, and the arguments.
+  var entry = '__dynCall-${funcPtr}-' + args;
+  try {
+    Asyncify.exportCallStack.push(entry);
+    return ${ret};
+  } finally {
+    if (ABORT) return;
+    var popped = Asyncify.exportCallStack.pop();
+    assert(popped === entry);
+  }
+})
+`;
+    }
+    return ret;
   }
 }
 
