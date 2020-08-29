@@ -40,10 +40,7 @@ mergeInto(LibraryManager.library, {
     // which is where we must call to rewind it.
     exportCallStack: [],
     callStackNameToId: {},
-    callStackIdToFunc: {},
-#if ASYNCIFY_LAZY_LOAD_CODE
     callStackIdToName: {},
-#endif
     callStackId: 0,
     afterUnwind: null,
     asyncFinalizers: [], // functions to run when *all* asynchronicity is done
@@ -54,11 +51,7 @@ mergeInto(LibraryManager.library, {
       if (id === undefined) {
         id = Asyncify.callStackId++;
         Asyncify.callStackNameToId[funcName] = id;
-#if ASYNCIFY_LAZY_LOAD_CODE
         Asyncify.callStackIdToName[id] = funcName;
-#else
-        Asyncify.callStackIdToFunc[id] = Module['asm'][funcName];
-#endif
       }
       return id;
     },
@@ -100,17 +93,17 @@ mergeInto(LibraryManager.library, {
           var original = exports[x];
           if (typeof original === 'function') {
             ret[x] = function() {
-              Asyncify.exportCallStack.push(x);
 #if ASYNCIFY_DEBUG >= 2
               err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try ' + x);
 #endif
+              Asyncify.exportCallStack.push(x);
               try {
                 return original.apply(null, arguments);
               } finally {
                 var y = Asyncify.exportCallStack.pop();
                 assert(y === x);
 #if ASYNCIFY_DEBUG >= 2
-                err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length + 1) + ' finally ' + x);
+                err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' finally ' + x);
 #endif
                 Asyncify.maybeStopUnwind();
               }
@@ -151,7 +144,7 @@ mergeInto(LibraryManager.library, {
       // An asyncify data structure has three fields:
       //  0  current stack pos
       //  4  max stack pos
-      //  8  id of function at bottom of the call stack (callStackIdToFunc[id] == js function)
+      //  8  id of function at bottom of the call stack (callStackIdToName[id] == name of js function)
       //
       // The Asyncify ABI only interprets the first two fields, the rest is for the runtime.
       // We also embed a stack in the same memory region here, right next to the structure.
@@ -178,16 +171,27 @@ mergeInto(LibraryManager.library, {
 
     getDataRewindFunc: function(ptr) {
       var id = {{{ makeGetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'i32') }}};
-      var func = Asyncify.callStackIdToFunc[id];
+      var name = Asyncify.callStackIdToName[id];
+      // The typical case is an export.
+      var func = Module['asm'][name];
+      if (func) return func;
 
-#if ASYNCIFY_LAZY_LOAD_CODE
-      if (func === undefined) {
-        func = Module['asm'][Asyncify.callStackIdToName[id]];
-        Asyncify.callStackIdToFunc[id] = func;
+      // If we did a table call into the module, we have a special marker for
+      // that which tells us how to rewind, using the name which is in form
+      // +dynCall_$FUNCPTR_$COMMA_SEPARATED_ARGS.
+      if (name.startsWith('+dynCall')) {
+        var parts = name.split('_');
+        var funcPtr = parts[1];
+        var args = parts[2].split(',').map(function(x) { return +x });
+        return function() {
+          // Note that we don't know the signature of the call here, but it
+          // does not matter in this code path (we never end up calling
+          // getDynCaller).
+          return ({{{ makeDynCall('?', 'funcPtr', true /* alwaysNew */) }}}).apply(null, args);
+        };
       }
-#endif
 
-      return func;
+      abort('invalid rewind func');
     },
 
     handleSleep: function(startAsync) {
@@ -421,27 +425,7 @@ mergeInto(LibraryManager.library, {
 if (!process.env.BAD) {
             getDynCaller("vi", entryPoint)(userData);
 } else {
-
-  (function() {
-    var args = Array.prototype.slice.call(arguments);
-    // Encode that this is a dynCall, the function pointer, and the arguments.
-    var entry = '__dynCall-${funcPtr}-' + args;
-    try {
-#if ASYNCIFY_DEBUG >= 2
-              err('ASYNCIFY-dyncall: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try ' + entry);
-#endif
-      Asyncify.exportCallStack.push(entry);
-      return wasmTable.get(entryPoint).apply(null, args);
-    } finally {
-      var popped = Asyncify.exportCallStack.pop();
-      assert(popped === entry);
-#if ASYNCIFY_DEBUG >= 2
-              err('ASYNCIFY-dyncall: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' finally ' + entry);
-#endif
-      Asyncify.maybeStopUnwind();
-    }
-  })(userData);
-
+            {{{ makeDynCall('vi', 'entryPoint', true /* alwaysNew */) }}}(userData);
 }
 
 
