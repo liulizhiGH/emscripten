@@ -822,7 +822,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   with ToolchainProfiler.profile_block('parse arguments and setup'):
     ## Parse args
 
-    newargs = list(args)
+    newargs = list(args) + ['--profiling']
 
     # Scan and strip emscripten specific cmdline warning flags.
     # This needs to run before other cmdline flags have been parsed, so that
@@ -1269,7 +1269,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.RELOCATABLE:
       shared.Settings.ALLOW_TABLE_GROWTH = 1
 
-    if shared.Settings.WASM2C or shared.Settings.ASYNCIFY:
+    if 1:#shared.Settings.WASM2C: # waka waka
       # See: https://github.com/emscripten-core/emscripten/issues/12065
       # See: https://github.com/emscripten-core/emscripten/issues/12066
       shared.Settings.USE_LEGACY_DYNCALLS = 1
