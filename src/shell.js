@@ -350,6 +350,11 @@ if (ENVIRONMENT_IS_NODE) {
 }
 #endif
 
+ Module['printErr'] = function(x) {
+  console.log(x);
+//  if (x.indexOf('ASYNC') >= 0) console.log(new Error().stack);
+};
+
 // Set up the out() and err() hooks, which are how we can print to stdout or
 // stderr, respectively.
 {{{ makeModuleReceiveWithVar('out', 'print',    'console.log.bind(console)',  true) }}}

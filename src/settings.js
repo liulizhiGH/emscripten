@@ -656,7 +656,7 @@ var ASYNCIFY_ONLY = [];
 var ASYNCIFY_LAZY_LOAD_CODE = 0;
 
 // Runtime debug logging from asyncify internals.
-var ASYNCIFY_DEBUG = 1;
+var ASYNCIFY_DEBUG = 2;
 
 // Runtime elements that are exported on Module by default. We used to export
 // quite a lot here, but have removed them all, so this option is redundant
