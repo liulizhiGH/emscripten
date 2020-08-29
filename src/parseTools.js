@@ -1468,18 +1468,25 @@ function makeDynCall(sig, funcPtr) {
       // entered the wasm, but calling the table requires some help. Track which
       // function pointer and which parameters were used on that stack with
       // special 'dynCall' entries, identifiable by their "__dynCall" prefix.
+      var debugPush = '', debugPop = '';
+      if (ASYNCIFY_DEBUG >= 2) {
+        debugPush = `err('ASYNCIFY-dyncall: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try ' + entry);`;
+        debugPop = `err('ASYNCIFY-dyncall: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' finally ' + entry);`;
+      }
       ret = `
 (function() {
   var args = Array.prototype.slice.call(arguments);
   // Encode that this is a dynCall, the function pointer, and the arguments.
   var entry = '__dynCall-${funcPtr}-' + args;
   try {
+    ${debugPush}
     Asyncify.exportCallStack.push(entry);
     return ${ret};
   } finally {
-    if (ABORT) return;
     var popped = Asyncify.exportCallStack.pop();
+    ${debugPop}
     assert(popped === entry);
+    Asyncify.maybeStopUnwind();
   }
 })
 `;

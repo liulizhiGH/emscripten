@@ -102,34 +102,17 @@ mergeInto(LibraryManager.library, {
             ret[x] = function() {
               Asyncify.exportCallStack.push(x);
 #if ASYNCIFY_DEBUG >= 2
-              err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try', x);
+              err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try ' + x);
 #endif
               try {
                 return original.apply(null, arguments);
               } finally {
-                if (ABORT) return;
                 var y = Asyncify.exportCallStack.pop();
                 assert(y === x);
 #if ASYNCIFY_DEBUG >= 2
-                err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length + 1) + ' finally', x);
+                err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length + 1) + ' finally ' + x);
 #endif
-                if (Asyncify.currData &&
-                    Asyncify.state === Asyncify.State.Unwinding &&
-                    Asyncify.exportCallStack.length === 0) {
-                  // We just finished unwinding.
-#if ASYNCIFY_DEBUG
-                  err('ASYNCIFY: stop unwind');
-#endif
-                  Asyncify.state = Asyncify.State.Normal;
-                  runAndAbortIfError(Module['_asyncify_stop_unwind']);
-                  if (typeof Fibers !== 'undefined') {
-                    Fibers.trampoline();
-                  }
-                  if (Asyncify.afterUnwind) {
-                    Asyncify.afterUnwind();
-                    Asyncify.afterUnwind = null;
-                  }
-                }
+                Asyncify.maybeStopUnwind();
               }
             };
           } else {
@@ -140,6 +123,30 @@ mergeInto(LibraryManager.library, {
       return ret;
     },
 
+    maybeStopUnwind: function() {
+      if (ABORT) return;
+#if ASYNCIFY_DEBUG
+      err('ASYNCIFY: maybe stop unwind', Asyncify.exportCallStack);
+#endif
+      if (Asyncify.currData &&
+          Asyncify.state === Asyncify.State.Unwinding &&
+          Asyncify.exportCallStack.length === 0) {
+        // We just finished unwinding.
+#if ASYNCIFY_DEBUG
+        err('ASYNCIFY: stop unwind');
+#endif
+        Asyncify.state = Asyncify.State.Normal;
+        runAndAbortIfError(Module['_asyncify_stop_unwind']);
+        if (typeof Fibers !== 'undefined') {
+          Fibers.trampoline();
+        }
+        if (Asyncify.afterUnwind) {
+          Asyncify.afterUnwind();
+          Asyncify.afterUnwind = null;
+        }
+      }
+    },
+    
     allocateData: function() {
       // An asyncify data structure has three fields:
       //  0  current stack pos
@@ -421,17 +428,17 @@ if (!process.env.BAD) {
     var entry = '__dynCall-${funcPtr}-' + args;
     try {
 #if ASYNCIFY_DEBUG >= 2
-              err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try', entry);
+              err('ASYNCIFY-dyncall: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try ' + entry);
 #endif
       Asyncify.exportCallStack.push(entry);
       return wasmTable.get(entryPoint);
     } finally {
-      if (ABORT) return;
       var popped = Asyncify.exportCallStack.pop();
       assert(popped === entry);
 #if ASYNCIFY_DEBUG >= 2
-              err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try', entry);
+              err('ASYNCIFY-dyncall: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' finally ' + entry);
 #endif
+      Asyncify.maybeStopUnwind();
     }
   })(userData);
 
