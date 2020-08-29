@@ -1458,22 +1458,23 @@ function makeDynCall(sig, funcPtr) {
   assert(sig.indexOf('j') == -1);
   if (USE_LEGACY_DYNCALLS) {
     return `getDynCaller("${sig}", ${funcPtr})`;
-  } else {
-    var ret = `wasmTable.get(${funcPtr})`;
-    if (ASYNCIFY) {
-      // Asyncify needs to know how to call back into the wasm the way it was
-      // called, so that we can resume execution (resuming begins with calling
-      // back inside just as we were called before). Exports are handled by
-      // Asyncify.exportCallStack, which lets us track the export by which we
-      // entered the wasm, but calling the table requires some help. Track which
-      // function pointer and which parameters were used on that stack with
-      // special 'dynCall' entries, identifiable by their "__dynCall" prefix.
-      var debugPush = '', debugPop = '';
-      if (ASYNCIFY_DEBUG >= 2) {
-        debugPush = `err('ASYNCIFY-dyncall: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try ' + entry);`;
-        debugPop = `err('ASYNCIFY-dyncall: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' finally ' + entry);`;
-      }
-      ret = `
+  }
+  if (!ASYNCIFY) {
+    return `wasmTable.get(${funcPtr})`;
+  }
+  // Asyncify needs to know how to call back into the wasm the way it was
+  // called, so that we can resume execution (resuming begins with calling
+  // back inside just as we were called before). Exports are handled by
+  // Asyncify.exportCallStack, which lets us track the export by which we
+  // entered the wasm, but calling the table requires some help. Track which
+  // function pointer and which parameters were used on that stack with
+  // special 'dynCall' entries, identifiable by their "__dynCall" prefix.
+  var debugPush = '', debugPop = '';
+  if (ASYNCIFY_DEBUG >= 2) {
+    debugPush = `err('ASYNCIFY-dyncall: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try ' + entry);`;
+    debugPop = `err('ASYNCIFY-dyncall: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' finally ' + entry);`;
+  }
+  return `
 (function() {
   var args = Array.prototype.slice.call(arguments);
   // Encode that this is a dynCall, the function pointer, and the arguments.
@@ -1481,7 +1482,7 @@ function makeDynCall(sig, funcPtr) {
   try {
     ${debugPush}
     Asyncify.exportCallStack.push(entry);
-    return ${ret};
+    return wasmTable.get(${funcPtr}).apply(null, args);
   } finally {
     var popped = Asyncify.exportCallStack.pop();
     ${debugPop}
@@ -1490,9 +1491,6 @@ function makeDynCall(sig, funcPtr) {
   }
 })
 `;
-    }
-    return ret;
-  }
 }
 
 function heapAndOffset(heap, ptr) { // given   HEAP8, ptr   , we return    splitChunk, relptr

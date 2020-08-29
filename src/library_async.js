@@ -431,7 +431,7 @@ if (!process.env.BAD) {
               err('ASYNCIFY-dyncall: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try ' + entry);
 #endif
       Asyncify.exportCallStack.push(entry);
-      return wasmTable.get(entryPoint);
+      return wasmTable.get(entryPoint).apply(null, args);
     } finally {
       var popped = Asyncify.exportCallStack.pop();
       assert(popped === entry);
