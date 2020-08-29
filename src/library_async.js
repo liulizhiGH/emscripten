@@ -408,20 +408,7 @@ mergeInto(LibraryManager.library, {
         {{{ makeSetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, 0, 'i32') }}};
 
         var userData = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.user_data, 'i32') }}};
-
-
-
-//        {{{ makeDynCall('vi', 'entryPoint') }}}(userData);
-
-
-
-if (!process.env.BAD) {
-          getDynCaller("vi", entryPoint)(userData);
-} else {
-          wasmTable.get(entryPoint)(userData);
-}
-
-
+        {{{ makeDynCall('vi', 'entryPoint') }}}(userData);
       } else {
         var asyncifyData = newFiber + {{{ C_STRUCTS.emscripten_fiber_s.asyncify_data }}};
         Asyncify.currData = asyncifyData;
