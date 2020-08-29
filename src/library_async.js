@@ -408,7 +408,37 @@ mergeInto(LibraryManager.library, {
         {{{ makeSetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, 0, 'i32') }}};
 
         var userData = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.user_data, 'i32') }}};
-        {{{ makeDynCall('vi', 'entryPoint') }}}(userData);
+
+
+
+if (!process.env.BAD) {
+            getDynCaller("vi", entryPoint)(userData);
+} else {
+
+  (function() {
+    var args = Array.prototype.slice.call(arguments);
+    // Encode that this is a dynCall, the function pointer, and the arguments.
+    var entry = '__dynCall-${funcPtr}-' + args;
+    try {
+#if ASYNCIFY_DEBUG >= 2
+              err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try', entry);
+#endif
+      Asyncify.exportCallStack.push(entry);
+      return wasmTable.get(entryPoint);
+    } finally {
+      if (ABORT) return;
+      var popped = Asyncify.exportCallStack.pop();
+      assert(popped === entry);
+#if ASYNCIFY_DEBUG >= 2
+              err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try', entry);
+#endif
+    }
+  })(userData);
+
+}
+
+
+
       } else {
         var asyncifyData = newFiber + {{{ C_STRUCTS.emscripten_fiber_s.asyncify_data }}};
         Asyncify.currData = asyncifyData;

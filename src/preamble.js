@@ -1,3 +1,5 @@
+console.log(process.env.BAD);
+
 /**
  * @license
  * Copyright 2010 The Emscripten Authors
