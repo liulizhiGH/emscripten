@@ -294,7 +294,7 @@ var DEMANGLE_SUPPORT = 0;
 // Runtime.debug at runtime for logging to cease, and can set it when you want
 // it back. A simple way to set it in C++ is
 //   emscripten_run_script("Runtime.debug = ...;");
-var LIBRARY_DEBUG = 0;
+var LIBRARY_DEBUG = 1;
 
 // Print out all musl syscalls, including translating their numeric index
 // to the string name, which can be convenient for debugging. (Other system
@@ -656,7 +656,7 @@ var ASYNCIFY_ONLY = [];
 var ASYNCIFY_LAZY_LOAD_CODE = 0;
 
 // Runtime debug logging from asyncify internals.
-var ASYNCIFY_DEBUG = 0;
+var ASYNCIFY_DEBUG = 1;
 
 // Runtime elements that are exported on Module by default. We used to export
 // quite a lot here, but have removed them all, so this option is redundant
